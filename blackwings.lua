@@ -1,5 +1,5 @@
--- BLACK ANGEL WINGS ULTIMATE (REALISTIC FEATHERS + DARK AURA)
-print("🔄 [WINGS] Memuat Sayap Malaikat Hitam...")
+-- BLACK ANGEL WINGS EPIC VERSION (REALISTIC STRUCTURE + DRAMATIC EFFECTS)
+print("🔄 [WINGS] Memuat Sayap Malaikat Hitam EPIC...")
 
 local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
@@ -9,14 +9,13 @@ local tweenService = game:GetService("TweenService")
 local wingsActive = false
 local currentWings = {}
 local wingConnection = nil
-local flapConnection = nil
 
--- ==================== 1. GUI BYPASS & SETUP ====================
+-- ==================== 1. GUI SETUP ====================
 local CoreGui = game:GetService("CoreGui")
 local PlayerGui = player:WaitForChild("PlayerGui")
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "BlackAngelWings"
+screenGui.Name = "EpicBlackWings"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 screenGui.DisplayOrder = 99999
@@ -28,7 +27,7 @@ if not success or not screenGui.Parent then
     screenGui.Parent = PlayerGui
 end
 
--- ==================== 2. TOMBOL BESAR ====================
+-- ==================== 2. TOMBOL ====================
 local mainButton = Instance.new("TextButton")
 mainButton.Name = "WingsToggleBtn"
 mainButton.Size = UDim2.new(0, 180, 0, 180)
@@ -36,7 +35,7 @@ mainButton.Position = UDim2.new(0.5, -90, 0.5, -90)
 mainButton.BackgroundColor3 = Color3.fromRGB(255, 30, 30)
 mainButton.BackgroundTransparency = 0.1
 mainButton.BorderSizePixel = 0
-mainButton.Text = "🦇\nSAYAP MALAIKAT"
+mainButton.Text = "🦇\nSAYAP EPIC"
 mainButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 mainButton.TextSize = 24
 mainButton.Font = Enum.Font.GothamBlack
@@ -77,15 +76,11 @@ game:GetService("UserInputService").InputChanged:Connect(function(input)
     end
 end)
 
--- ==================== 3. FUNGSI SAYAP MALAIKAT ====================
+-- ==================== 3. FUNGSI SAYAP EPIC ====================
 local function clearWings()
     if wingConnection then
         wingConnection:Disconnect()
         wingConnection = nil
-    end
-    if flapConnection then
-        flapConnection:Disconnect()
-        flapConnection = nil
     end
     for _, wing in pairs(currentWings) do
         if wing and wing.Parent then wing:Destroy() end
@@ -93,15 +88,21 @@ local function clearWings()
     currentWings = {}
 end
 
-local function createFeather(parent, size, position, rotation, color)
-    local feather = Instance.new("Part")
-    feather.Size = size
-    feather.Color = color
-    feather.Material = Enum.Material.ForceField
-    feather.Transparency = 0.3
-    feather.CanCollide = false
-    feather.Anchored = false
-    feather.Massless = true
+local function createWingPart(name, size, color, material, transparency)
+    local part = Instance.new("Part")
+    part.Name = name
+    part.Size = size
+    part.Color = color
+    part.Material = material or Enum.Material.SmoothPlastic
+    part.Transparency = transparency or 0
+    part.CanCollide = false
+    part.Anchored = false
+    part.Massless = true
+    return part
+end
+
+local function createFeather(parent, length, width, angle, offset, color)
+    local feather = createWingPart("Feather", Vector3.new(width, 0.1, length), color, Enum.Material.Fabric, 0.2)
     feather.Parent = parent
     
     local weld = Instance.new("WeldConstraint")
@@ -109,119 +110,207 @@ local function createFeather(parent, size, position, rotation, color)
     weld.Part1 = feather
     weld.Parent = feather
     
-    feather.CFrame = parent.CFrame * CFrame.new(position) * CFrame.Angles(rotation.X, rotation.Y, rotation.Z)
+    feather.CFrame = parent.CFrame * CFrame.new(offset.X, offset.Y, offset.Z) * CFrame.Angles(angle.X, angle.Y, angle.Z)
+    
+    -- Tambahkan glow effect
+    local pointLight = Instance.new("PointLight")
+    pointLight.Color = Color3.fromRGB(50, 0, 80)
+    pointLight.Brightness = 0.5
+    pointLight.Range = 3
+    pointLight.Parent = feather
     
     return feather
 end
 
-local function createAngelWing(side)
+local function createEpicWing(side)
     local wingModel = Instance.new("Model")
-    wingModel.Name = "AngelWing_" .. side
+    wingModel.Name = "EpicWing_" .. side
     wingModel.Parent = character
     
-    -- Tulang utama sayap (bone structure)
-    local mainBone = Instance.new("Part")
-    mainBone.Size = Vector3.new(0.3, 0.3, 4)
-    mainBone.Color = Color3.fromRGB(20, 20, 20)
-    mainBone.Material = Enum.Material.Neon
-    mainBone.Transparency = 0.2
-    mainBone.CanCollide = false
-    mainBone.Anchored = false
-    mainBone.Massless = true
-    mainBone.Parent = wingModel
+    local multiplier = side == "L" and -1 or 1
     
-    -- Tambahkan efek asap gelap
-    local smokeEffect = Instance.new("ParticleEmitter")
-    smokeEffect.Color = ColorSequence.new(Color3.fromRGB(15, 15, 15), Color3.fromRGB(40, 40, 40))
-    smokeEffect.Size = NumberSequence.new({
+    -- ===== STRUKTUR TULANG UTAMA (3 BAGIAN) =====
+    -- Tulang atas (shoulder)
+    local bone1 = createWingPart("Bone1", Vector3.new(0.4, 0.4, 2), Color3.fromRGB(20, 20, 20), Enum.Material.Neon, 0.1)
+    bone1.Parent = wingModel
+    
+    -- Tulang tengah (elbow)
+    local bone2 = createWingPart("Bone2", Vector3.new(0.3, 0.3, 2.5), Color3.fromRGB(30, 30, 30), Enum.Material.Neon, 0.15)
+    bone2.Parent = wingModel
+    
+    -- Tulang bawah (wrist)
+    local bone3 = createWingPart("Bone3", Vector3.new(0.2, 0.2, 2), Color3.fromRGB(40, 40, 40), Enum.Material.Neon, 0.2)
+    bone3.Parent = wingModel
+    
+    -- Weld tulang
+    local weld1 = Instance.new("WeldConstraint")
+    weld1.Part0 = bone1
+    weld1.Part1 = bone2
+    weld1.Parent = bone2
+    
+    local weld2 = Instance.new("WeldConstraint")
+    weld2.Part0 = bone2
+    weld2.Part1 = bone3
+    weld2.Parent = bone3
+    
+    -- ===== BULU-BULU PRIMER (BESAR) =====
+    local primaryFeathers = 12
+    for i = 1, primaryFeathers do
+        local progress = i / primaryFeathers
+        local length = 4 - (progress * 1.5) -- Mengecil ke ujung
+        local width = 0.8 - (progress * 0.3)
+        
+        -- Posisi menyebar membentuk kurva
+        local offsetZ = -0.3 * i
+        local offsetY = -0.2 * progress
+        local offsetX = multiplier * (0.5 + (progress * 1.5))
+        
+        -- Rotasi mengikuti kurva sayap
+        local angleX = math.rad(-10 - (progress * 20))
+        local angleY = math.rad(multiplier * (10 + (progress * 30)))
+        local angleZ = math.rad(multiplier * progress * 15)
+        
+        local feather = createFeather(bone3, length, width, 
+            Vector3.new(angleX, angleY, angleZ),
+            Vector3.new(offsetX, offsetY, offsetZ),
+            Color3.fromRGB(10, 10, 10))
+        
+        table.insert(currentWings, feather)
+    end
+    
+    -- ===== BULU-BULU SEKUNDER (MENENGAH) =====
+    local secondaryFeathers = 8
+    for i = 1, secondaryFeathers do
+        local progress = i / secondaryFeathers
+        local length = 3 - (progress * 1)
+        local width = 0.6 - (progress * 0.2)
+        
+        local offsetZ = -0.25 * i
+        local offsetY = 0.1
+        local offsetX = multiplier * (0.3 + (progress * 1))
+        
+        local angleX = math.rad(-5 - (progress * 15))
+        local angleY = math.rad(multiplier * (5 + (progress * 20)))
+        local angleZ = math.rad(multiplier * progress * 10)
+        
+        local feather = createFeather(bone2, length, width,
+            Vector3.new(angleX, angleY, angleZ),
+            Vector3.new(offsetX, offsetY, offsetZ),
+            Color3.fromRGB(20, 20, 20))
+        
+        table.insert(currentWings, feather)
+    end
+    
+    -- ===== BULU-BULU KOVERT (KECIL) =====
+    local covertFeathers = 6
+    for i = 1, covertFeathers do
+        local progress = i / covertFeathers
+        local length = 2 - (progress * 0.5)
+        local width = 0.4 - (progress * 0.1)
+        
+        local offsetZ = -0.2 * i
+        local offsetY = 0.3
+        local offsetX = multiplier * (0.2 + (progress * 0.5))
+        
+        local angleX = math.rad(-progress * 10)
+        local angleY = math.rad(multiplier * progress * 15)
+        local angleZ = math.rad(multiplier * progress * 5)
+        
+        local feather = createFeather(bone1, length, width,
+            Vector3.new(angleX, angleY, angleZ),
+            Vector3.new(offsetX, offsetY, offsetZ),
+            Color3.fromRGB(30, 30, 30))
+        
+        table.insert(currentWings, feather)
+    end
+    
+    -- ===== EFEK ASAP GELAP DRAMATIS =====
+    local smoke1 = Instance.new("ParticleEmitter")
+    smoke1.Color = ColorSequence.new(Color3.fromRGB(10, 10, 10), Color3.fromRGB(30, 30, 30))
+    smoke1.Size = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 1),
+        NumberSequenceKeypoint.new(0.5, 2.5),
+        NumberSequenceKeypoint.new(1, 4)
+    })
+    smoke1.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.6),
+        NumberSequenceKeypoint.new(0.5, 0.8),
+        NumberSequenceKeypoint.new(1, 1)
+    })
+    smoke1.Lifetime = NumberRange.new(2, 3)
+    smoke1.Rate = 25
+    smoke1.Speed = NumberRange.new(2, 4)
+    smoke1.SpreadAngle = Vector2.new(30, 30)
+    smoke1.Rotation = NumberRange.new(0, 360)
+    smoke1.RotSpeed = NumberRange.new(-100, 100)
+    smoke1.Parent = bone1
+    
+    local smoke2 = Instance.new("ParticleEmitter")
+    smoke2.Color = ColorSequence.new(Color3.fromRGB(20, 0, 40), Color3.fromRGB(50, 0, 80))
+    smoke2.Size = NumberSequence.new({
         NumberSequenceKeypoint.new(0, 0.5),
         NumberSequenceKeypoint.new(1, 2)
     })
-    smokeEffect.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.7),
+    smoke2.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.5),
         NumberSequenceKeypoint.new(1, 1)
     })
-    smokeEffect.Lifetime = NumberRange.new(1, 2)
-    smokeEffect.Rate = 15
-    smokeEffect.Speed = NumberRange.new(1, 2)
-    smokeEffect.SpreadAngle = Vector2.new(20, 20)
-    smokeEffect.Rotation = NumberRange.new(0, 360)
-    smokeEffect.RotSpeed = NumberRange.new(-50, 50)
-    smokeEffect.Parent = mainBone
+    smoke2.Lifetime = NumberRange.new(1.5, 2.5)
+    smoke2.Rate = 15
+    smoke2.Speed = NumberRange.new(1, 2)
+    smoke2.SpreadAngle = Vector2.new(45, 45)
+    smoke2.Parent = bone2
     
-    -- Buat bulu-bulu sayap (feathers)
-    local featherCount = 8
-    for i = 1, featherCount do
-        local progress = i / featherCount
-        local featherSize = Vector3.new(0.15, 0.8 - (progress * 0.3), 2.5 - (progress * 0.8))
-        local featherPos = Vector3.new(0, 0, -0.3 * i)
-        local featherRot = Vector3.new(0, 0, math.rad(side == "L" and 15 or -15) * progress)
-        
-        local feather = createFeather(mainBone, featherSize, featherPos, featherRot, Color3.fromRGB(10, 10, 10))
-        table.insert(currentWings, feather)
-    end
+    table.insert(currentWings, bone1)
+    table.insert(currentWings, bone2)
+    table.insert(currentWings, bone3)
+    table.insert(currentWings, wingModel)
     
-    -- Bulu sekunder (lebih kecil)
-    for i = 1, 5 do
-        local progress = i / 5
-        local featherSize = Vector3.new(0.1, 0.5 - (progress * 0.2), 1.8 - (progress * 0.5))
-        local featherPos = Vector3.new(0.2 * (side == "L" and -1 or 1), 0, -0.2 * i)
-        local featherRot = Vector3.new(0, 0, math.rad(side == "L" and 25 or -25) * progress)
-        
-        local feather = createFeather(mainBone, featherSize, featherPos, featherRot, Color3.fromRGB(30, 30, 30))
-        table.insert(currentWings, feather)
-    end
-    
-    table.insert(currentWings, mainBone)
-    return wingModel, mainBone
+    return wingModel, bone1
 end
 
-local function createCustomWings()
+local function createEpicWings()
     clearWings()
     local rootPart = character:WaitForChild("HumanoidRootPart")
     
-    local leftWing, leftBone = createAngelWing("L")
-    local rightWing, rightBone = createAngelWing("R")
+    local leftWing, leftBone = createEpicWing("L")
+    local rightWing, rightBone = createEpicWing("R")
     
-    -- Posisi sayap di belakang punggung
     local flapAngle = 0
     local flapDirection = 1
     
     wingConnection = runService.Heartbeat:Connect(function()
         if wingsActive and rootPart and rootPart.Parent then
-            -- Posisi dasar di belakang karakter
-            local baseCFrame = rootPart.CFrame * CFrame.new(0, 0.5, 1.2)
+            -- Posisi di belakang punggung
+            local baseCFrame = rootPart.CFrame * CFrame.new(0, 1, 1.5)
             
-            -- Animasi mengepak (flapping)
-            flapAngle = flapAngle + (0.03 * flapDirection)
-            if flapAngle > 0.3 or flapAngle < -0.3 then
+            -- Animasi mengepak lebih dramatis
+            flapAngle = flapAngle + (0.04 * flapDirection)
+            if flapAngle > 0.4 or flapAngle < -0.4 then
                 flapDirection = -flapDirection
             end
             
             -- Sayap kiri
-            leftBone.CFrame = baseCFrame * CFrame.new(-1.2, 0, 0) * CFrame.Angles(0, math.rad(20 + (flapAngle * 30)), math.rad(-10))
+            leftBone.CFrame = baseCFrame * CFrame.new(-1.5, 0, 0) * CFrame.Angles(0, math.rad(25 + (flapAngle * 40)), math.rad(-15))
             
             -- Sayap kanan
-            rightBone.CFrame = baseCFrame * CFrame.new(1.2, 0, 0) * CFrame.Angles(0, math.rad(-20 - (flapAngle * 30)), math.rad(10))
+            rightBone.CFrame = baseCFrame * CFrame.new(1.5, 0, 0) * CFrame.Angles(0, math.rad(-25 - (flapAngle * 40)), math.rad(15))
         end
     end)
-    
-    table.insert(currentWings, leftWing)
-    table.insert(currentWings, rightWing)
 end
 
 local function toggleWings()
     wingsActive = not wingsActive
     
     if wingsActive then
-        createCustomWings()
+        createEpicWings()
         mainButton.Text = "✅\nSAYAP AKTIF"
         mainButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
         stroke.Color = Color3.fromRGB(0, 255, 0)
-        print("✨ [WINGS] Sayap Malaikat Hitam Dipasang!")
+        print("✨ [WINGS] Sayap Malaikat Hitam EPIC Dipasang!")
     else
         clearWings()
-        mainButton.Text = "🦇\nSAYAP MALAIKAT"
+        mainButton.Text = "🦇\nSAYAP EPIC"
         mainButton.BackgroundColor3 = Color3.fromRGB(255, 30, 30)
         stroke.Color = Color3.fromRGB(255, 255, 255)
         print("😴 [WINGS] Sayap Dihapus.")
@@ -244,12 +333,14 @@ player.CharacterAdded:Connect(function(newChar)
     character = newChar
     clearWings()
     task.wait(0.5)
-    if wingsActive then createCustomWings() end
+    if wingsActive then createEpicWings() end
 end)
 
 print("========================================")
-print("✅ SAYAP MALAIKAT HITAM SIAP!")
+print("✅ SAYAP MALAIKAT HITAM EPIC SIAP!")
 print("👉 Tombol MERAH di TENGAH LAYAR")
-print("🦇 Sayap dengan bulu realistis + aura asap")
-print("✨ Animasi mengepak otomatis")
+print("🦇 Sayap dengan struktur tulang 3 bagian")
+print("✨ 26 bulu per sayap (primer + sekunder + covert)")
+print("💨 Efek asap gelap dramatis + glow ungu")
+print("🎬 Animasi mengepak lebih dramatis")
 print("========================================")
