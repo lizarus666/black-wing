@@ -1,34 +1,296 @@
--- BLACK ANGEL WINGS WITH UNLIMITED CONTROLS (NO LIMITS)
-print("🔄 [WINGS] Memuat script dengan kontrol TANPA BATAS...")
+-- BLACK ANGEL WINGS - MULTIPLAYER VISIBLE
+-- Sistem: Client kirim request → Server buat sayap → Semua player bisa lihat
+
+print("🔄 [WINGS] Memuat sistem Multiplayer...")
 
 local player = game.Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
 local runService = game:GetService("RunService")
-local userInputService = game:GetService("UserInputService")
+local repStorage = game:GetService("ReplicatedStorage")
 
 local wingsActive = false
-local wingConnection = nil
-local wingModel = nil
-local allFeathers = {}
-local smokeEmitter = nil
-local anchorPart = nil
-local anchorWeld = nil
 
--- Parameter default
-local wingScale = 1.0
-local smokeRate = 30
-local featherLength = 1.0
+-- ==================== 1. BUAT REMOTE EVENT ====================
+local remoteName = "BlackWingsRemote"
+local remote = repStorage:FindFirstChild(remoteName)
+if not remote then
+    remote = Instance.new("RemoteEvent")
+    remote.Name = remoteName
+    remote.Parent = repStorage
+end
+print("✅ [WINGS] RemoteEvent siap")
 
--- ==================== GUI SETUP ====================
+-- ==================== 2. BUAT SERVER SCRIPT ====================
+local serverScriptName = "BlackWingsServer"
+local existingServer = game:GetService("ServerScriptService"):FindFirstChild(serverScriptName)
+
+if not existingServer then
+    local serverSuccess = pcall(function()
+        local serverScript = Instance.new("Script")
+        serverScript.Name = serverScriptName
+        serverScript.Source = [[
+-- SERVER SCRIPT: Membuat sayap yang terlihat semua player
+local repStorage = game:GetService("ReplicatedStorage")
+local remote = repStorage:WaitForChild("BlackWingsRemote")
+
+local playerWings = {}
+
+local function clearWings(player)
+    if playerWings[player] then
+        for _, obj in pairs(playerWings[player]) do
+            if obj and obj.Parent then
+                obj:Destroy()
+            end
+        end
+        playerWings[player] = nil
+    end
+end
+
+local function createWingsOnServer(player, scale, smokeRate, featherLen)
+    local character = player.Character
+    if not character then return end
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+
+    clearWings(player)
+    playerWings[player] = {}
+
+    local wingModel = Instance.new("Model")
+    wingModel.Name = "ServerBlackWings_" .. player.Name
+    wingModel.Parent = workspace
+    table.insert(playerWings[player], wingModel)
+
+    local anchor = Instance.new("Part")
+    anchor.Name = "WingAnchor"
+    anchor.Size = Vector3.new(0.1, 0.1, 0.1)
+    anchor.Transparency = 1
+    anchor.CanCollide = false
+    anchor.Anchored = false
+    anchor.Massless = true
+    anchor.Parent = wingModel
+
+    local weld = Instance.new("Weld")
+    weld.Part0 = rootPart
+    weld.Part1 = anchor
+    weld.C0 = CFrame.new(0, 0.8, 1.5)
+    weld.Parent = anchor
+
+    local function makeFeather(name, size, color, pos, angles)
+        local f = Instance.new("Part")
+        f.Name = name
+        f.Size = Vector3.new(size.X * scale, size.Y * scale, size.Z * scale * featherLen)
+        f.Color = color
+        f.Material = Enum.Material.Fabric
+        f.Transparency = 0.15
+        f.CanCollide = false
+        f.Anchored = false
+        f.Massless = true
+        f.Parent = wingModel
+
+        local w = Instance.new("Weld")
+        w.Part0 = anchor
+        w.Part1 = f
+        w.C0 = CFrame.new(pos.X * scale, pos.Y * scale, pos.Z * scale * featherLen) * CFrame.Angles(angles.X, angles.Y, angles.Z)
+        w.Parent = f
+    end
+
+    -- Tulang Kiri
+    makeFeather("LB", Vector3.new(0.4,0.4,5), Color3.fromRGB(15,15,15), Vector3.new(-1.5,0.8,0), Vector3.new(0,math.rad(25),0))
+    -- Bulu Primer Kiri
+    for i = 1, 12 do
+        local p = i / 12
+        makeFeather("LF"..i, Vector3.new(1.2-p*0.4, 0.15, 6-p*2), Color3.fromRGB(10,10,10),
+            Vector3.new(-1.5-p*3, 0.8-p*0.5, -0.4*i),
+            Vector3.new(math.rad(-15-p*25), math.rad(20+p*35), math.rad(p*15)))
+    end
+    -- Bulu Sekunder Kiri
+    for i = 1, 6 do
+        local p = i / 6
+        makeFeather("LS"..i, Vector3.new(0.9-p*0.3, 0.12, 4.5-p*1.5), Color3.fromRGB(20,20,20),
+            Vector3.new(-1.2-p*2, 0.5-p*0.3, -0.3*i),
+            Vector3.new(math.rad(-10-p*20), math.rad(15+p*25), math.rad(p*10)))
+    end
+
+    -- Tulang Kanan
+    makeFeather("RB", Vector3.new(0.4,0.4,5), Color3.fromRGB(15,15,15), Vector3.new(1.5,0.8,0), Vector3.new(0,math.rad(-25),0))
+    -- Bulu Primer Kanan
+    for i = 1, 12 do
+        local p = i / 12
+        makeFeather("RF"..i, Vector3.new(1.2-p*0.4, 0.15, 6-p*2), Color3.fromRGB(10,10,10),
+            Vector3.new(1.5+p*3, 0.8-p*0.5, -0.4*i),
+            Vector3.new(math.rad(-15-p*25), math.rad(-20-p*35), math.rad(-p*15)))
+    end
+    -- Bulu Sekunder Kanan
+    for i = 1, 6 do
+        local p = i / 6
+        makeFeather("RS"..i, Vector3.new(0.9-p*0.3, 0.12, 4.5-p*1.5), Color3.fromRGB(20,20,20),
+            Vector3.new(1.2+p*2, 0.5-p*0.3, -0.3*i),
+            Vector3.new(math.rad(-10-p*20), math.rad(-15-p*25), math.rad(-p*10)))
+    end
+
+    -- Asap
+    local smoke = Instance.new("ParticleEmitter")
+    smoke.Color = ColorSequence.new(Color3.fromRGB(5,5,5), Color3.fromRGB(30,30,30))
+    smoke.Size = NumberSequence.new({NumberSequenceKeypoint.new(0,1.5),NumberSequenceKeypoint.new(0.5,4),NumberSequenceKeypoint.new(1,6)})
+    smoke.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0,0.4),NumberSequenceKeypoint.new(0.5,0.7),NumberSequenceKeypoint.new(1,1)})
+    smoke.Lifetime = NumberRange.new(3,4)
+    smoke.Rate = smokeRate
+    smoke.Speed = NumberRange.new(2,4)
+    smoke.SpreadAngle = Vector2.new(45,45)
+    smoke.Rotation = NumberRange.new(0,360)
+    smoke.RotSpeed = NumberRange.new(-80,80)
+    smoke.Parent = anchor
+end
+
+-- Terima request dari client
+remote.OnServerEvent:Connect(function(player, action, scale, smokeRate, featherLen)
+    if action == "CREATE" then
+        createWingsOnServer(player, scale or 1, smokeRate or 30, featherLen or 1)
+    elseif action == "REMOVE" then
+        clearWings(player)
+    end
+end)
+
+-- Bersihkan saat player keluar
+game.Players.PlayerRemoving:Connect(function(player)
+    clearWings(player)
+end)
+
+print("✅ [SERVER] Black Wings Server Script aktif!")
+]]
+        serverScript.Parent = game:GetService("ServerScriptService")
+    end)
+
+    if serverSuccess then
+        print("✅ [WINGS] Server Script berhasil dibuat!")
+    else
+        print("❌ [WINGS] Gagal membuat Server Script!")
+        print("⚠️ Executor kamu mungkin tidak support server-side script")
+        print("⚠️ Sayap hanya akan terlihat oleh kamu sendiri (fallback ke client)")
+    end
+else
+    print("✅ [WINGS] Server Script sudah ada")
+end
+
+-- ==================== 3. FALLBACK: CLIENT-SIDE WINGS ====================
+local clientWingModel = nil
+local clientWingConnection = nil
+local clientFeathers = {}
+local clientSmoke = nil
+
+local function clearClientWings()
+    if clientWingConnection then
+        clientWingConnection:Disconnect()
+        clientWingConnection = nil
+    end
+    if clientWingModel and clientWingModel.Parent then
+        clientWingModel:Destroy()
+        clientWingModel = nil
+    end
+    clientFeathers = {}
+    clientSmoke = nil
+end
+
+local function createClientWings(scale, smokeRate, featherLen)
+    clearClientWings()
+    local character = player.Character
+    if not character then return end
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+
+    clientWingModel = Instance.new("Model")
+    clientWingModel.Name = "ClientBlackWings"
+    clientWingModel.Parent = character
+
+    local anchor = Instance.new("Part")
+    anchor.Size = Vector3.new(0.1, 0.1, 0.1)
+    anchor.Transparency = 1
+    anchor.CanCollide = false
+    anchor.Anchored = false
+    anchor.Massless = true
+    anchor.Parent = clientWingModel
+
+    local weld = Instance.new("Weld")
+    weld.Part0 = rootPart
+    weld.Part1 = anchor
+    weld.C0 = CFrame.new(0, 0.8, 1.5)
+    weld.Parent = anchor
+
+    local function makeF(name, size, color, pos, angles)
+        local f = Instance.new("Part")
+        f.Name = name
+        f.Size = Vector3.new(size.X * scale, size.Y * scale, size.Z * scale * featherLen)
+        f.Color = color
+        f.Material = Enum.Material.Fabric
+        f.Transparency = 0.15
+        f.CanCollide = false
+        f.Anchored = false
+        f.Massless = true
+        f.Parent = clientWingModel
+
+        local w = Instance.new("Weld")
+        w.Part0 = anchor
+        w.Part1 = f
+        w.C0 = CFrame.new(pos.X * scale, pos.Y * scale, pos.Z * scale * featherLen) * CFrame.Angles(angles.X, angles.Y, angles.Z)
+        w.Parent = f
+        table.insert(clientFeathers, f)
+    end
+
+    makeF("LB", Vector3.new(0.4,0.4,5), Color3.fromRGB(15,15,15), Vector3.new(-1.5,0.8,0), Vector3.new(0,math.rad(25),0))
+    for i = 1, 12 do
+        local p = i / 12
+        makeF("LF"..i, Vector3.new(1.2-p*0.4,0.15,6-p*2), Color3.fromRGB(10,10,10),
+            Vector3.new(-1.5-p*3,0.8-p*0.5,-0.4*i), Vector3.new(math.rad(-15-p*25),math.rad(20+p*35),math.rad(p*15)))
+    end
+    for i = 1, 6 do
+        local p = i / 6
+        makeF("LS"..i, Vector3.new(0.9-p*0.3,0.12,4.5-p*1.5), Color3.fromRGB(20,20,20),
+            Vector3.new(-1.2-p*2,0.5-p*0.3,-0.3*i), Vector3.new(math.rad(-10-p*20),math.rad(15+p*25),math.rad(p*10)))
+    end
+
+    makeF("RB", Vector3.new(0.4,0.4,5), Color3.fromRGB(15,15,15), Vector3.new(1.5,0.8,0), Vector3.new(0,math.rad(-25),0))
+    for i = 1, 12 do
+        local p = i / 12
+        makeF("RF"..i, Vector3.new(1.2-p*0.4,0.15,6-p*2), Color3.fromRGB(10,10,10),
+            Vector3.new(1.5+p*3,0.8-p*0.5,-0.4*i), Vector3.new(math.rad(-15-p*25),math.rad(-20-p*35),math.rad(-p*15)))
+    end
+    for i = 1, 6 do
+        local p = i / 6
+        makeF("RS"..i, Vector3.new(0.9-p*0.3,0.12,4.5-p*1.5), Color3.fromRGB(20,20,20),
+            Vector3.new(1.2+p*2,0.5-p*0.3,-0.3*i), Vector3.new(math.rad(-10-p*20),math.rad(-15-p*25),math.rad(-p*10)))
+    end
+
+    clientSmoke = Instance.new("ParticleEmitter")
+    clientSmoke.Color = ColorSequence.new(Color3.fromRGB(5,5,5), Color3.fromRGB(30,30,30))
+    clientSmoke.Size = NumberSequence.new({NumberSequenceKeypoint.new(0,1.5),NumberSequenceKeypoint.new(0.5,4),NumberSequenceKeypoint.new(1,6)})
+    clientSmoke.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0,0.4),NumberSequenceKeypoint.new(0.5,0.7),NumberSequenceKeypoint.new(1,1)})
+    clientSmoke.Lifetime = NumberRange.new(3,4)
+    clientSmoke.Rate = smokeRate
+    clientSmoke.Speed = NumberRange.new(2,4)
+    clientSmoke.SpreadAngle = Vector2.new(45,45)
+    clientSmoke.Rotation = NumberRange.new(0,360)
+    clientSmoke.RotSpeed = NumberRange.new(-80,80)
+    clientSmoke.Parent = anchor
+
+    local flapAngle = 0
+    local flapDir = 1
+    clientWingConnection = runService.Heartbeat:Connect(function()
+        if wingsActive and anchor and anchor.Parent then
+            flapAngle = flapAngle + (0.05 * flapDir)
+            if flapAngle > 0.35 or flapAngle < -0.35 then flapDir = -flapDir end
+            weld.C0 = CFrame.new(0, 0.8, 1.5) * CFrame.Angles(math.rad(flapAngle * 25), 0, 0)
+        end
+    end)
+end
+
+-- ==================== 4. GUI SETUP ====================
 local playerGui = player:WaitForChild("PlayerGui")
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "WingControls"
+screenGui.Name = "WingControlsMP"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 screenGui.DisplayOrder = 99999
 screenGui.Parent = playerGui
 
--- Frame utama kontrol
 local controlFrame = Instance.new("Frame")
 controlFrame.Size = UDim2.new(0, 280, 0, 380)
 controlFrame.Position = UDim2.new(0, 20, 0.5, -190)
@@ -36,46 +298,63 @@ controlFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 controlFrame.BackgroundTransparency = 0.1
 controlFrame.BorderSizePixel = 0
 controlFrame.Parent = screenGui
-
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 15)
-corner.Parent = controlFrame
-
-local stroke = Instance.new("UIStroke")
-stroke.Color = Color3.fromRGB(100, 100, 100)
-stroke.Thickness = 2
-stroke.Parent = controlFrame
+Instance.new("UICorner", controlFrame).CornerRadius = UDim.new(0, 15)
+local frameStroke = Instance.new("UIStroke")
+frameStroke.Color = Color3.fromRGB(100, 100, 100)
+frameStroke.Thickness = 2
+frameStroke.Parent = controlFrame
 
 -- Judul
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 40)
 title.BackgroundTransparency = 1
-title.Text = "🦇 KONTROL SAYAP (UNLIMITED)"
+title.Text = "🦇 SAYAP MULTIPLAYER"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.TextSize = 18
 title.Font = Enum.Font.GothamBlack
 title.Parent = controlFrame
 
--- Fungsi buat input box TANPA BATASAN
+-- Status label
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, -20, 0, 20)
+statusLabel.Position = UDim2.new(0, 10, 0, 38)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "⏳ Mengecek status server..."
+statusLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+statusLabel.TextSize = 11
+statusLabel.Font = Enum.Font.GothamBold
+statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+statusLabel.Parent = controlFrame
+
+-- Cek apakah server script berhasil
+task.wait(1)
+local serverExists = game:GetService("ServerScriptService"):FindFirstChild(serverScriptName)
+if serverExists then
+    statusLabel.Text = "🟢 SERVER AKTIF - Semua player bisa lihat!"
+    statusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+else
+    statusLabel.Text = "🟡 CLIENT ONLY - Hanya kamu yang bisa lihat"
+    statusLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+end
+
+-- Fungsi buat kontrol input
 local function createInputControl(name, defaultVal, step, yPos)
     local container = Instance.new("Frame")
     container.Size = UDim2.new(1, -20, 0, 70)
     container.Position = UDim2.new(0, 10, 0, yPos)
     container.BackgroundTransparency = 1
     container.Parent = controlFrame
-    
-    -- Label
+
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(1, 0, 0, 20)
     label.BackgroundTransparency = 1
-    label.Text = name .. " (TANPA BATAS)"
+    label.Text = name
     label.TextColor3 = Color3.fromRGB(200, 200, 200)
     label.TextSize = 12
     label.Font = Enum.Font.GothamBold
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = container
-    
-    -- Tombol MINUS
+
     local minusBtn = Instance.new("TextButton")
     minusBtn.Size = UDim2.new(0, 40, 0, 35)
     minusBtn.Position = UDim2.new(0, 0, 0, 25)
@@ -86,8 +365,7 @@ local function createInputControl(name, defaultVal, step, yPos)
     minusBtn.Font = Enum.Font.GothamBlack
     minusBtn.Parent = container
     Instance.new("UICorner", minusBtn).CornerRadius = UDim.new(0, 8)
-    
-    -- Input Box (bisa diketik)
+
     local inputBox = Instance.new("TextBox")
     inputBox.Size = UDim2.new(1, -100, 0, 35)
     inputBox.Position = UDim2.new(0, 50, 0, 25)
@@ -96,13 +374,10 @@ local function createInputControl(name, defaultVal, step, yPos)
     inputBox.TextSize = 16
     inputBox.Font = Enum.Font.GothamBold
     inputBox.Text = tostring(defaultVal)
-    inputBox.PlaceholderText = "Ketik angka..."
-    inputBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
     inputBox.ClearTextOnFocus = false
     inputBox.Parent = container
     Instance.new("UICorner", inputBox).CornerRadius = UDim.new(0, 8)
-    
-    -- Tombol PLUS
+
     local plusBtn = Instance.new("TextButton")
     plusBtn.Size = UDim2.new(0, 40, 0, 35)
     plusBtn.Position = UDim2.new(1, -40, 0, 25)
@@ -113,14 +388,11 @@ local function createInputControl(name, defaultVal, step, yPos)
     plusBtn.Font = Enum.Font.GothamBlack
     plusBtn.Parent = container
     Instance.new("UICorner", plusBtn).CornerRadius = UDim.new(0, 8)
-    
+
     local currentValue = defaultVal
-    
-    -- Fungsi update nilai TANPA BATASAN
+
     local function updateValue(newValue)
-        -- Hanya validasi apakah angka valid, TIDAK ADA BATASAN
-        if type(newValue) == "number" and newValue == newValue then -- Cek NaN
-            -- Round ke step terdekat
+        if type(newValue) == "number" and newValue == newValue then
             newValue = math.floor(newValue / step + 0.5) * step
             newValue = tonumber(string.format("%.2f", newValue))
             currentValue = newValue
@@ -128,44 +400,25 @@ local function createInputControl(name, defaultVal, step, yPos)
         end
         return currentValue
     end
-    
-    -- Event tombol minus
-    minusBtn.MouseButton1Click:Connect(function()
-        updateValue(currentValue - step)
-    end)
-    
-    -- Event tombol plus
-    plusBtn.MouseButton1Click:Connect(function()
-        updateValue(currentValue + step)
-    end)
-    
-    -- Event saat user selesai mengetik
-    inputBox.FocusLost:Connect(function(enterPressed)
+
+    minusBtn.MouseButton1Click:Connect(function() updateValue(currentValue - step) end)
+    plusBtn.MouseButton1Click:Connect(function() updateValue(currentValue + step) end)
+    inputBox.FocusLost:Connect(function()
         local numValue = tonumber(inputBox.Text)
-        if numValue then
-            updateValue(numValue)
-        else
-            inputBox.Text = tostring(currentValue)
-        end
+        if numValue then updateValue(numValue) else inputBox.Text = tostring(currentValue) end
     end)
-    
-    -- Return function untuk mendapatkan nilai
-    return function()
-        return currentValue
-    end, function()
-        updateValue(defaultVal)
-    end
+
+    return function() return currentValue end, function() updateValue(defaultVal) end
 end
 
--- Buat 3 kontrol input TANPA BATASAN
-local getWingScale, resetWingScale = createInputControl("Ukuran Sayap", 1.0, 0.1, 50)
-local getSmokeRate, resetSmokeRate = createInputControl("Ketebalan Asap", 30, 5, 130)
-local getFeatherLength, resetFeatherLength = createInputControl("Panjang Bulu", 1.0, 0.1, 210)
+local getScale, resetScale = createInputControl("Ukuran Sayap (TANPA BATAS)", 1.0, 0.1, 60)
+local getSmoke, resetSmoke = createInputControl("Ketebalan Asap (TANPA BATAS)", 30, 5, 130)
+local getFeather, resetFeather = createInputControl("Panjang Bulu (TANPA BATAS)", 1.0, 0.1, 200)
 
 -- Tombol TERAPKAN
 local applyButton = Instance.new("TextButton")
 applyButton.Size = UDim2.new(1, -20, 0, 35)
-applyButton.Position = UDim2.new(0, 10, 0, 290)
+applyButton.Position = UDim2.new(0, 10, 0, 280)
 applyButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
 applyButton.Text = "✅ TERAPKAN PERUBAHAN"
 applyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -177,7 +430,7 @@ Instance.new("UICorner", applyButton).CornerRadius = UDim.new(0, 8)
 -- Tombol Toggle
 local toggleButton = Instance.new("TextButton")
 toggleButton.Size = UDim2.new(0.5, -5, 0, 35)
-toggleButton.Position = UDim2.new(0, 10, 0, 335)
+toggleButton.Position = UDim2.new(0, 10, 0, 325)
 toggleButton.BackgroundColor3 = Color3.fromRGB(255, 30, 30)
 toggleButton.Text = "🦇 ON/OFF"
 toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -187,224 +440,55 @@ toggleButton.Parent = controlFrame
 Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(0, 8)
 
 -- Tombol Reset
-local resetButton = Instance.new("TextButton")
-resetButton.Size = UDim2.new(0.5, -5, 0, 35)
-resetButton.Position = UDim2.new(0.5, -5, 0, 335)
-resetButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-resetButton.Text = "🔄 RESET"
-resetButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-resetButton.TextSize = 14
-resetButton.Font = Enum.Font.GothamBlack
-resetButton.Parent = controlFrame
-Instance.new("UICorner", resetButton).CornerRadius = UDim.new(0, 8)
+local resetBtn = Instance.new("TextButton")
+resetBtn.Size = UDim2.new(0.5, -5, 0, 35)
+resetBtn.Position = UDim2.new(0.5, -5, 0, 325)
+resetBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+resetBtn.Text = "🔄 RESET"
+resetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+resetBtn.TextSize = 14
+resetBtn.Font = Enum.Font.GothamBlack
+resetBtn.Parent = controlFrame
+Instance.new("UICorner", resetBtn).CornerRadius = UDim.new(0, 8)
 
--- ==================== FUNGSI SAYAP ====================
-local function clearWings()
-    if wingConnection then
-        wingConnection:Disconnect()
-        wingConnection = nil
-    end
-    if wingModel and wingModel.Parent then
-        wingModel:Destroy()
-        wingModel = nil
-    end
-    allFeathers = {}
-    smokeEmitter = nil
-    anchorPart = nil
-    anchorWeld = nil
-end
+-- ==================== 5. LOGIKA UTAMA ====================
+local function activateWings()
+    local scale = getScale()
+    local smoke = getSmoke()
+    local feather = getFeather()
 
-local function updateWingSize()
-    wingScale = getWingScale()
-    for _, feather in pairs(allFeathers) do
-        if feather and feather.Parent then
-            local originalSize = feather:GetAttribute("OriginalSize")
-            if originalSize then
-                feather.Size = Vector3.new(
-                    originalSize.X * wingScale,
-                    originalSize.Y * wingScale,
-                    originalSize.Z * wingScale
-                )
-            end
+    -- Coba kirim ke server dulu
+    if serverExists then
+        local success = pcall(function()
+            remote:FireServer("CREATE", scale, smoke, feather)
+        end)
+        if success then
+            print("✅ [WINGS] Request dikirim ke SERVER - Semua player bisa lihat!")
+            return
         end
     end
+
+    -- Fallback ke client
+    print("⚠️ [WINGS] Server tidak tersedia, menggunakan CLIENT mode")
+    createClientWings(scale, smoke, feather)
 end
 
-local function updateSmokeRate()
-    smokeRate = getSmokeRate()
-    if smokeEmitter and smokeEmitter.Parent then
-        smokeEmitter.Rate = smokeRate
+local function deactivateWings()
+    -- Coba hapus dari server
+    if serverExists then
+        pcall(function()
+            remote:FireServer("REMOVE")
+        end)
     end
+    -- Hapus dari client juga
+    clearClientWings()
 end
 
-local function updateFeatherLength()
-    featherLength = getFeatherLength()
-    for _, feather in pairs(allFeathers) do
-        if feather and feather.Parent then
-            local originalSize = feather:GetAttribute("OriginalSize")
-            if originalSize then
-                feather.Size = Vector3.new(
-                    originalSize.X * wingScale,
-                    originalSize.Y * wingScale,
-                    originalSize.Z * wingScale * featherLength
-                )
-            end
-        end
-    end
-end
-
-local function createWings()
-    clearWings()
-    
-    local rootPart = character:WaitForChild("HumanoidRootPart")
-    if not rootPart then return end
-    
-    wingModel = Instance.new("Model")
-    wingModel.Name = "BlackAngelWings"
-    wingModel.Parent = character
-    
-    anchorPart = Instance.new("Part")
-    anchorPart.Name = "WingAnchor"
-    anchorPart.Size = Vector3.new(0.1, 0.1, 0.1)
-    anchorPart.Transparency = 1
-    anchorPart.CanCollide = false
-    anchorPart.Anchored = false
-    anchorPart.Massless = true
-    anchorPart.Parent = wingModel
-    
-    anchorWeld = Instance.new("Weld")
-    anchorWeld.Part0 = rootPart
-    anchorWeld.Part1 = anchorPart
-    anchorWeld.C0 = CFrame.new(0, 0.8, 1.5)
-    anchorWeld.Parent = anchorPart
-    
-    local function createFeather(name, size, color, position, angles)
-        local feather = Instance.new("Part")
-        feather.Name = name
-        feather.Size = size
-        feather:SetAttribute("OriginalSize", size)
-        feather.Color = color
-        feather.Material = Enum.Material.Fabric
-        feather.Transparency = 0.15
-        feather.CanCollide = false
-        feather.Anchored = false
-        feather.Massless = true
-        feather.Parent = wingModel
-        
-        local weld = Instance.new("Weld")
-        weld.Part0 = anchorPart
-        weld.Part1 = feather
-        weld.C0 = CFrame.new(position.X, position.Y, position.Z) * CFrame.Angles(angles.X, angles.Y, angles.Z)
-        weld.Parent = feather
-        
-        table.insert(allFeathers, feather)
-        return feather
-    end
-    
-    -- Sayap Kiri
-    createFeather("LeftBone", Vector3.new(0.4, 0.4, 5), Color3.fromRGB(15, 15, 15),
-        Vector3.new(-1.5, 0.8, 0), Vector3.new(0, math.rad(25), 0))
-    
-    for i = 1, 12 do
-        local progress = i / 12
-        local length = 6 - (progress * 2)
-        local width = 1.2 - (progress * 0.4)
-        local offsetX = -1.5 - (progress * 3)
-        local offsetY = 0.8 - (progress * 0.5)
-        local offsetZ = -0.4 * i
-        
-        createFeather("LeftFeather" .. i, Vector3.new(width, 0.15, length), Color3.fromRGB(10, 10, 10),
-            Vector3.new(offsetX, offsetY, offsetZ),
-            Vector3.new(math.rad(-15 - progress * 25), math.rad(20 + progress * 35), math.rad(progress * 15)))
-    end
-    
-    for i = 1, 6 do
-        local progress = i / 6
-        local length = 4.5 - (progress * 1.5)
-        local width = 0.9 - (progress * 0.3)
-        local offsetX = -1.2 - (progress * 2)
-        local offsetY = 0.5 - (progress * 0.3)
-        local offsetZ = -0.3 * i
-        
-        createFeather("LeftSecondary" .. i, Vector3.new(width, 0.12, length), Color3.fromRGB(20, 20, 20),
-            Vector3.new(offsetX, offsetY, offsetZ),
-            Vector3.new(math.rad(-10 - progress * 20), math.rad(15 + progress * 25), math.rad(progress * 10)))
-    end
-    
-    -- Sayap Kanan
-    createFeather("RightBone", Vector3.new(0.4, 0.4, 5), Color3.fromRGB(15, 15, 15),
-        Vector3.new(1.5, 0.8, 0), Vector3.new(0, math.rad(-25), 0))
-    
-    for i = 1, 12 do
-        local progress = i / 12
-        local length = 6 - (progress * 2)
-        local width = 1.2 - (progress * 0.4)
-        local offsetX = 1.5 + (progress * 3)
-        local offsetY = 0.8 - (progress * 0.5)
-        local offsetZ = -0.4 * i
-        
-        createFeather("RightFeather" .. i, Vector3.new(width, 0.15, length), Color3.fromRGB(10, 10, 10),
-            Vector3.new(offsetX, offsetY, offsetZ),
-            Vector3.new(math.rad(-15 - progress * 25), math.rad(-20 - progress * 35), math.rad(-progress * 15)))
-    end
-    
-    for i = 1, 6 do
-        local progress = i / 6
-        local length = 4.5 - (progress * 1.5)
-        local width = 0.9 - (progress * 0.3)
-        local offsetX = 1.2 + (progress * 2)
-        local offsetY = 0.5 - (progress * 0.3)
-        local offsetZ = -0.3 * i
-        
-        createFeather("RightSecondary" .. i, Vector3.new(width, 0.12, length), Color3.fromRGB(20, 20, 20),
-            Vector3.new(offsetX, offsetY, offsetZ),
-            Vector3.new(math.rad(-10 - progress * 20), math.rad(-15 - progress * 25), math.rad(-progress * 10)))
-    end
-    
-    -- Efek Asap
-    smokeEmitter = Instance.new("ParticleEmitter")
-    smokeEmitter.Color = ColorSequence.new(Color3.fromRGB(5, 5, 5), Color3.fromRGB(30, 30, 30))
-    smokeEmitter.Size = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 1.5),
-        NumberSequenceKeypoint.new(0.5, 4),
-        NumberSequenceKeypoint.new(1, 6)
-    })
-    smokeEmitter.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.4),
-        NumberSequenceKeypoint.new(0.5, 0.7),
-        NumberSequenceKeypoint.new(1, 1)
-    })
-    smokeEmitter.Lifetime = NumberRange.new(3, 4)
-    smokeEmitter.Rate = smokeRate
-    smokeEmitter.Speed = NumberRange.new(2, 4)
-    smokeEmitter.SpreadAngle = Vector2.new(45, 45)
-    smokeEmitter.Rotation = NumberRange.new(0, 360)
-    smokeEmitter.RotSpeed = NumberRange.new(-80, 80)
-    smokeEmitter.Parent = anchorPart
-    
-    -- Animasi
-    local flapAngle = 0
-    local flapDirection = 1
-    
-    wingConnection = runService.Heartbeat:Connect(function()
-        if wingsActive and anchorPart and anchorPart.Parent then
-            flapAngle = flapAngle + (0.05 * flapDirection)
-            if flapAngle > 0.35 or flapAngle < -0.35 then
-                flapDirection = -flapDirection
-            end
-            anchorWeld.C0 = CFrame.new(0, 0.8, 1.5) * CFrame.Angles(math.rad(flapAngle * 25), 0, 0)
-        end
-    end)
-    
-    print("✅ [WINGS] Sayap berhasil dibuat!")
-end
-
--- ==================== EVENT HANDLERS ====================
+-- ==================== 6. EVENT HANDLERS ====================
 applyButton.MouseButton1Click:Connect(function()
     if wingsActive then
-        updateWingSize()
-        updateSmokeRate()
-        updateFeatherLength()
+        deactivateWings()
+        activateWings()
         print("✅ [WINGS] Perubahan diterapkan!")
     else
         print("⚠️ [WINGS] Aktifkan sayap dulu!")
@@ -413,49 +497,39 @@ end)
 
 toggleButton.MouseButton1Click:Connect(function()
     wingsActive = not wingsActive
-    
+
     if wingsActive then
-        createWings()
+        activateWings()
         toggleButton.Text = "✅ AKTIF"
         toggleButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
     else
-        clearWings()
+        deactivateWings()
         toggleButton.Text = "🦇 ON/OFF"
         toggleButton.BackgroundColor3 = Color3.fromRGB(255, 30, 30)
     end
 end)
 
-resetButton.MouseButton1Click:Connect(function()
-    resetWingScale()
-    resetSmokeRate()
-    resetFeatherLength()
-    
+resetBtn.MouseButton1Click:Connect(function()
+    resetScale()
+    resetSmoke()
+    resetFeather()
     if wingsActive then
-        updateWingSize()
-        updateSmokeRate()
-        updateFeatherLength()
+        deactivateWings()
+        activateWings()
     end
-    
-    print("🔄 [WINGS] Parameter direset ke default")
+    print("🔄 [WINGS] Reset ke default")
 end)
 
 player.CharacterAdded:Connect(function(newChar)
-    character = newChar
-    clearWings()
     task.wait(0.5)
     if wingsActive then
-        createWings()
+        activateWings()
     end
 end)
 
 print("========================================")
-print("✅ KONTROL SAYAP UNLIMITED SIAP!")
-print("👉 Panel kontrol di KIRI layar")
-print("📝 KETIK ANGKA BEBAS atau tekan +/-")
-print("   - Ukuran Sayap (BEBAS)")
-print("   - Ketebalan Asap (BEBAS)")
-print("   - Panjang Bulu (BEBAS)")
-print("✅ Tekan TERAPKAN setelah mengubah nilai")
-print("🔄 RESET untuk kembalikan ke default")
-print("⚠️ Nilai ekstrem mungkin mempengaruhi performa")
+print("✅ SAYAP MULTIPLAYER SIAP!")
+print("🟢 Jika SERVER AKTIF = semua player bisa lihat")
+print("🟡 Jika CLIENT ONLY = hanya kamu yang lihat")
+print("📝 Panel kontrol di KIRI layar")
 print("========================================")
