@@ -1,5 +1,5 @@
--- BLACK ANGEL WINGS WITH TEXT INPUT CONTROLS (NO SLIDER BUG)
-print("🔄 [WINGS] Memuat script dengan kontrol INPUT TEKS...")
+-- BLACK ANGEL WINGS WITH UNLIMITED CONTROLS (NO LIMITS)
+print("🔄 [WINGS] Memuat script dengan kontrol TANPA BATAS...")
 
 local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
@@ -50,14 +50,14 @@ stroke.Parent = controlFrame
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 40)
 title.BackgroundTransparency = 1
-title.Text = "🦇 KONTROL SAYAP"
+title.Text = "🦇 KONTROL SAYAP (UNLIMITED)"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.TextSize = 20
+title.TextSize = 18
 title.Font = Enum.Font.GothamBlack
 title.Parent = controlFrame
 
--- Fungsi buat input box dengan tombol +/-
-local function createInputControl(name, minVal, maxVal, defaultVal, step, yPos)
+-- Fungsi buat input box TANPA BATASAN
+local function createInputControl(name, defaultVal, step, yPos)
     local container = Instance.new("Frame")
     container.Size = UDim2.new(1, -20, 0, 70)
     container.Position = UDim2.new(0, 10, 0, yPos)
@@ -68,7 +68,7 @@ local function createInputControl(name, minVal, maxVal, defaultVal, step, yPos)
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(1, 0, 0, 20)
     label.BackgroundTransparency = 1
-    label.Text = name .. " (" .. minVal .. " - " .. maxVal .. ")"
+    label.Text = name .. " (TANPA BATAS)"
     label.TextColor3 = Color3.fromRGB(200, 200, 200)
     label.TextSize = 12
     label.Font = Enum.Font.GothamBold
@@ -116,15 +116,17 @@ local function createInputControl(name, minVal, maxVal, defaultVal, step, yPos)
     
     local currentValue = defaultVal
     
-    -- Fungsi update nilai
+    -- Fungsi update nilai TANPA BATASAN
     local function updateValue(newValue)
-        newValue = math.clamp(newValue, minVal, maxVal)
-        -- Round ke step terdekat
-        newValue = math.floor(newValue / step + 0.5) * step
-        newValue = tonumber(string.format("%.1f", newValue))
-        currentValue = newValue
-        inputBox.Text = tostring(newValue)
-        return newValue
+        -- Hanya validasi apakah angka valid, TIDAK ADA BATASAN
+        if type(newValue) == "number" and newValue == newValue then -- Cek NaN
+            -- Round ke step terdekat
+            newValue = math.floor(newValue / step + 0.5) * step
+            newValue = tonumber(string.format("%.2f", newValue))
+            currentValue = newValue
+            inputBox.Text = tostring(newValue)
+        end
+        return currentValue
     end
     
     -- Event tombol minus
@@ -155,10 +157,10 @@ local function createInputControl(name, minVal, maxVal, defaultVal, step, yPos)
     end
 end
 
--- Buat 3 kontrol input
-local getWingScale, resetWingScale = createInputControl("Ukuran Sayap", 0.5, 3.0, 1.0, 0.1, 50)
-local getSmokeRate, resetSmokeRate = createInputControl("Ketebalan Asap", 0, 100, 30, 5, 130)
-local getFeatherLength, resetFeatherLength = createInputControl("Panjang Bulu", 0.5, 3.0, 1.0, 0.1, 210)
+-- Buat 3 kontrol input TANPA BATASAN
+local getWingScale, resetWingScale = createInputControl("Ukuran Sayap", 1.0, 0.1, 50)
+local getSmokeRate, resetSmokeRate = createInputControl("Ketebalan Asap", 30, 5, 130)
+local getFeatherLength, resetFeatherLength = createInputControl("Panjang Bulu", 1.0, 0.1, 210)
 
 -- Tombol TERAPKAN
 local applyButton = Instance.new("TextButton")
@@ -447,12 +449,13 @@ player.CharacterAdded:Connect(function(newChar)
 end)
 
 print("========================================")
-print("✅ KONTROL SAYAP SIAP!")
+print("✅ KONTROL SAYAP UNLIMITED SIAP!")
 print("👉 Panel kontrol di KIRI layar")
-print("📝 KETIK ANGKA atau tekan +/- untuk atur:")
-print("   - Ukuran Sayap (0.5 - 3.0)")
-print("   - Ketebalan Asap (0 - 100)")
-print("   - Panjang Bulu (0.5 - 3.0)")
+print("📝 KETIK ANGKA BEBAS atau tekan +/-")
+print("   - Ukuran Sayap (BEBAS)")
+print("   - Ketebalan Asap (BEBAS)")
+print("   - Panjang Bulu (BEBAS)")
 print("✅ Tekan TERAPKAN setelah mengubah nilai")
 print("🔄 RESET untuk kembalikan ke default")
+print("⚠️ Nilai ekstrem mungkin mempengaruhi performa")
 print("========================================")
