@@ -83,7 +83,7 @@ local function createWings()
         feather.Size = size
         feather.Color = color
         feather.Material = Enum.Material.Fabric
-        feather.Transparency = 0.15
+        feather.Transparency = 1
         feather.CanCollide = false
         feather.Anchored = false
         feather.Massless = true
@@ -111,9 +111,9 @@ local function createWings()
     -- Bulu-bulu primer kiri (12 bulu - LEBIH BANYAK)
     for i = 1, 12 do
         local progress = i / 12
-        local length = 6 - (progress * 2) -- LEBIH PANJANG (max 6 studs)
+        local length = 25 - (progress * 2) -- LEBIH PANJANG (max 6 studs)
         local width = 1.2 - (progress * 0.4) -- LEBIH LEBAR
-        local offsetX = -1.5 - (progress * 3) -- LEBIH JAUH (total 4.5 studs)
+        local offsetX = -1.5 - (progress * 7) -- LEBIH JAUH (total 4.5 studs)
         local offsetY = 0.8 - (progress * 0.5)
         local offsetZ = -0.4 * i
         
