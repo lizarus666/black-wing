@@ -1,9 +1,8 @@
--- Black Wings with GUI Button (Mobile & PC) - UPGRADED & FIXED VERSION
--- Tekan tombol di layar untuk memunculkan/menghilangkan sayap
+-- BLACK WINGS ULTIMATE FIX (PUSAT LAYAR & BYPASS ANTI-CHEAT)
+print("🔄 [WINGS] Memulai inisialisasi script...")
 
 local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
-local userInputService = game:GetService("UserInputService")
 local runService = game:GetService("RunService")
 local tweenService = game:GetService("TweenService")
 
@@ -11,87 +10,85 @@ local wingsActive = false
 local currentWings = {}
 local wingConnection = nil
 
--- Konfigurasi Visual Sayap
-local WING_COLOR = Color3.fromRGB(15, 15, 15) -- Warna hitam pekat
-local WING_GLOW = false -- Set true jika ingin sayap menyala (Neon)
+-- ==================== 1. GUI BYPASS & SETUP ====================
+local CoreGui = game:GetService("CoreGui")
+local PlayerGui = player:WaitForChild("PlayerGui")
 
--- ==================== 1. GUI SETUP (DIPERBAIKI) ====================
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "WingsToggleGUI"
+screenGui.Name = "BlackWingsUltimate"
 screenGui.ResetOnSpawn = false
-screenGui.IgnoreGuiInset = true -- FIX: Agar tidak tertutup topbar Roblox
-screenGui.DisplayOrder = 999 -- FIX: Agar selalu di atas UI game lain
-screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
-screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.IgnoreGuiInset = true
+screenGui.DisplayOrder = 99999 -- Prioritas tertinggi
 
--- Frame utama (bisa di-drag agar tidak terhalang UI game)
-local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 80, 0, 80)
-mainFrame.Position = UDim2.new(1, -100, 1, -100) -- Pojok kanan bawah
-mainFrame.BackgroundTransparency = 1
-mainFrame.Parent = screenGui
+-- Coba masukkan ke CoreGui (Bypass Anti-Cheat Game), jika gagal fallback ke PlayerGui
+local success = pcall(function()
+    screenGui.Parent = CoreGui
+end)
+if not success or not screenGui.Parent then
+    screenGui.Parent = PlayerGui
+end
 
--- Tombol
-local button = Instance.new("TextButton")
-button.Size = UDim2.new(1, 0, 1, 0)
-button.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-button.BackgroundTransparency = 0.2
-button.BorderSizePixels = 0
-button.Text = "🦇"
-button.TextColor3 = Color3.fromRGB(255, 255, 255)
-button.TextSize = 40
-button.Font = Enum.Font.GothamBold
-button.AutoButtonColor = false
-button.ZIndex = 10
-button.Parent = mainFrame
+print("✅ [WINGS] GUI Berhasil dimuat di:", screenGui.Parent.Name)
 
--- UI Corner & Stroke agar tombol terlihat jelas dan rapi
+-- ==================== 2. TOMBOL BESAR DI TENGAH LAYAR ====================
+local mainButton = Instance.new("TextButton")
+mainButton.Name = "WingsToggleBtn"
+mainButton.Size = UDim2.new(0, 180, 0, 180) -- Ukuran Besar!
+mainButton.Position = UDim2.new(0.5, -90, 0.5, -90) -- TEPAT DI TENGAH LAYAR
+mainButton.AnchorPoint = Vector2.new(0, 0)
+mainButton.BackgroundColor3 = Color3.fromRGB(255, 30, 30) -- MERAH MENCOLOK
+mainButton.BackgroundTransparency = 0.1
+mainButton.BorderSizePixel = 0
+mainButton.Text = "🦇\nTEKAN SAYAP"
+mainButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+mainButton.TextSize = 24
+mainButton.Font = Enum.Font.GothamBlack
+mainButton.AutoButtonColor = true
+mainButton.ZIndex = 100
+mainButton.Parent = screenGui
+
+-- Biar bulat dan ada garis tepi
 local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 15)
-corner.Parent = button
+corner.CornerRadius = UDim.new(0, 25)
+corner.Parent = mainButton
 
 local stroke = Instance.new("UIStroke")
-stroke.Color = Color3.fromRGB(100, 100, 100)
-stroke.Thickness = 2
-stroke.Parent = button
+stroke.Color = Color3.fromRGB(255, 255, 255)
+stroke.Thickness = 4
+stroke.Parent = mainButton
 
--- FITUR DRAG: Tombol bisa digeser jika terhalang UI game
+-- Fitur Geser (Draggable) agar bisa dipindah kalau menutupi layar
 local dragging, dragInput, dragStart, startPos
-button.InputBegan:Connect(function(input)
+mainButton.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
         dragStart = input.Position
-        startPos = mainFrame.Position
+        startPos = mainButton.Position
         input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
+            if input.UserInputState == Enum.UserInputState.End then dragging = false end
         end)
     end
 end)
-button.InputChanged:Connect(function(input)
+mainButton.InputChanged:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
         dragInput = input
     end
 end)
-userInputService.InputChanged:Connect(function(input)
+game:GetService("UserInputService").InputChanged:Connect(function(input)
     if input == dragInput and dragging then
         local delta = input.Position - dragStart
-        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        mainButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
 
--- ==================== 2. FUNGSI SAYAP (DIPERBAIKI) ====================
+-- ==================== 3. LOGIKA SAYAP ====================
 local function clearWings()
-    -- FIX: Putus koneksi RunService agar tidak error saat karakter mati
     if wingConnection then
         wingConnection:Disconnect()
         wingConnection = nil
     end
     for _, wing in pairs(currentWings) do
-        if wing and wing.Parent then
-            wing:Destroy()
-        end
+        if wing and wing.Parent then wing:Destroy() end
     end
     currentWings = {}
 end
@@ -100,30 +97,27 @@ local function createCustomWings()
     clearWings()
     local rootPart = character:WaitForChild("HumanoidRootPart")
     
-    local function createWingPart(name)
+    local function makeWing(name)
         local wing = Instance.new("Part")
         wing.Name = name
-        wing.Size = Vector3.new(3.5, 0.3, 4)
-        wing.Color = WING_COLOR
-        wing.Material = WING_GLOW and Enum.Material.Neon or Enum.Material.SmoothPlastic
+        wing.Size = Vector3.new(4, 0.2, 5)
+        wing.Color = Color3.fromRGB(10, 10, 10)
+        wing.Material = Enum.Material.Neon
         wing.CanCollide = false
         wing.Anchored = false
-        wing.Massless = true -- FIX: Agar sayap tidak memberatkan fisika karakter
-        wing.Transparency = 0.1
+        wing.Massless = true
+        wing.Transparency = 0.2
         wing.Parent = character
         return wing
     end
 
-    local wingL = createWingPart("BlackWing_L")
-    local wingR = createWingPart("BlackWing_R")
+    local wingL = makeWing("Wing_L")
+    local wingR = makeWing("Wing_R")
     
-    -- FIX: Gunakan Heartbeat dan hapus WeldConstraint (mencegah jitter/bug fisika)
     wingConnection = runService.Heartbeat:Connect(function()
         if wingsActive and rootPart and rootPart.Parent then
-            -- Posisi dan rotasi sayap kiri
-            wingL.CFrame = rootPart.CFrame * CFrame.new(-1.5, 0.8, -0.8) * CFrame.Angles(math.rad(10), math.rad(35), math.rad(-5))
-            -- Posisi dan rotasi sayap kanan
-            wingR.CFrame = rootPart.CFrame * CFrame.new(1.5, 0.8, -0.8) * CFrame.Angles(math.rad(10), math.rad(-35), math.rad(5))
+            wingL.CFrame = rootPart.CFrame * CFrame.new(-1.5, 1, -1) * CFrame.Angles(math.rad(15), math.rad(30), math.rad(-10))
+            wingR.CFrame = rootPart.CFrame * CFrame.new(1.5, 1, -1) * CFrame.Angles(math.rad(15), math.rad(-30), math.rad(10))
         end
     end)
     
@@ -136,63 +130,42 @@ local function toggleWings()
     
     if wingsActive then
         createCustomWings()
-        button.Text = "✅"
-        button.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        mainButton.Text = "✅\nSAYAP AKTIF"
+        mainButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0) -- Hijau
         stroke.Color = Color3.fromRGB(0, 255, 0)
+        print("✨ [WINGS] Sayap Hitam Berhasil Dipasang!")
     else
         clearWings()
-        button.Text = "🦇"
-        button.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-        stroke.Color = Color3.fromRGB(100, 100, 100)
+        mainButton.Text = "🦇\nTEKAN SAYAP"
+        mainButton.BackgroundColor3 = Color3.fromRGB(255, 30, 30) -- Merah
+        stroke.Color = Color3.fromRGB(255, 255, 255)
+        print("😴 [WINGS] Sayap Dihapus.")
     end
 end
 
--- ==================== 3. EVENT & INPUT (DIPERBAIKI) ====================
--- FIX: Hapus TouchTap, MouseButton1Click sudah cukup untuk PC & Mobile
-button.MouseButton1Click:Connect(function()
-    -- Animasi tekan menggunakan TweenService (lebih halus)
-    local tweenDown = tweenService:Create(button, TweenInfo.new(0.1), {Size = UDim2.new(0.9, 0, 0.9, 0)})
+-- ==================== 4. EVENT TOMBOL ====================
+mainButton.MouseButton1Click:Connect(function()
+    -- Animasi tekan
+    local tweenDown = tweenService:Create(mainButton, TweenInfo.new(0.1), {Size = UDim2.new(0, 160, 0, 160)})
     tweenDown:Play()
     task.delay(0.1, function()
-        tweenService:Create(button, TweenInfo.new(0.1), {Size = UDim2.new(1, 0, 1, 0)}):Play()
+        tweenService:Create(mainButton, TweenInfo.new(0.1), {Size = UDim2.new(0, 180, 0, 180)}):Play()
     end)
     
     toggleWings()
 end)
 
--- ==================== 4. RESPAWN HANDLER ====================
+-- ==================== 5. RESPAWN HANDLER ====================
 player.CharacterAdded:Connect(function(newChar)
     character = newChar
-    clearWings() -- Bersihkan sayap lama dan connection
+    clearWings()
     task.wait(0.5)
-    if wingsActive then
-        createCustomWings()
-    end
-end)
-
--- ==================== 5. NOTIFIKASI SUKSES (FITUR BARU) ====================
--- Membuat notifikasi agar user yakin script berhasil dieksekusi
-local notif = Instance.new("TextLabel")
-notif.Size = UDim2.new(0, 300, 0, 50)
-notif.Position = UDim2.new(0.5, -150, 0.1, 0)
-notif.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-notif.BackgroundTransparency = 0.3
-notif.TextColor3 = Color3.fromRGB(255, 255, 255)
-notif.Text = "✨ Script Sayap Hitam Berhasil Dimuat! ✨\nTombol ada di pojok kanan bawah (Bisa digeser)"
-notif.TextScaled = true
-notif.Font = Enum.Font.GothamBold
-notif.Parent = screenGui
-Instance.new("UICorner", notif).CornerRadius = UDim.new(0, 10)
-
-task.delay(4, function()
-    local tween = tweenService:Create(notif, TweenInfo.new(1), {BackgroundTransparency = 1, TextTransparency = 1})
-    tween:Play()
-    task.wait(1)
-    notif:Destroy()
+    if wingsActive then createCustomWings() end
 end)
 
 print("========================================")
-print("✨ SCRIPT SAYAP HITAM (UPGRADED) SIAP! ✨")
-print("📱 Tombol bisa DIGESER jika terhalang UI")
-print("💻 Kompatibel HP & PC")
+print("✅ SCRIPT BERHASIL DI-EXECUTE!")
+print("👉 LIHAT TENGAH LAYAR KAMU!")
+print("🔴 Tombol MERAH BESAR sudah muncul.")
+print("👆 Tekan tombol tersebut untuk memunculkan sayap.")
 print("========================================")
